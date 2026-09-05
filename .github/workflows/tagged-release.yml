@@ -1,40 +1,23 @@
-name: "Tagged Release"
+name: "Release Build Test"
+
+# TEMPORARY TEST HARNESS - DO NOT MERGE.
+# Builds every release target on push so the aarch64 jobs and the updated
+# actions can be verified without cutting a release. No release is created
+# and no assets are uploaded.
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - "aarch64-release-test"
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  create-release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          name: ${{ github.ref_name }}
-          body: |
-            - `resvg-0.*.0.tar.xz` is a sources archive with vendored Rust dependencies
-            - `resvg-explorer-extension.exe` is an SVG thumbnailer for Windows Explorer
-
-            Check [CHANGELOG](https://github.com/linebender/resvg/blob/${{ github.ref }}/CHANGELOG.md).
-          draft: false
-          prerelease: false
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-
   release-linux:
     name: Release Linux (x86_64)
     runs-on: ubuntu-latest
-    needs: ["create-release"]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -57,34 +40,9 @@ jobs:
           cp resvg-linux-x86_64.tar.gz ../../bin/
           cp usvg-linux-x86_64.tar.gz ../../bin/
 
-      - name: Make vendored archive
-        run: |
-          VERSION=${GITHUB_REF_NAME#v}
-          echo $VERSION
-          git clone https://github.com/linebender/resvg resvg-$VERSION
-          cd resvg-"$VERSION"
-          mkdir -p .cargo
-          cargo vendor > .cargo/config
-          cd ..
-          env XZ_OPT="-9e" tar \
-              --exclude=".git" \
-              --exclude="resvg-$VERSION/.github" \
-              --exclude="resvg-$VERSION/version-bump.md" \
-              --exclude="resvg-$VERSION/docs" \
-              -cJf resvg-"$VERSION".tar.xz resvg-"$VERSION"
-          cp resvg-"$VERSION".tar.xz bin/
-
-      - name: Upload binaries
-        uses: alexellis/upload-assets@0.5.0
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["bin/*"]'
-
   release-linux-aarch64:
     name: Release Linux (aarch64)
     runs-on: ubuntu-24.04-arm
-    needs: ["create-release"]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -107,17 +65,9 @@ jobs:
           cp resvg-linux-aarch64.tar.gz ../../bin/
           cp usvg-linux-aarch64.tar.gz ../../bin/
 
-      - name: Upload binaries
-        uses: alexellis/upload-assets@0.5.0
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["bin/*"]'
-
   release-windows:
     name: Release Windows (x86_64)
     runs-on: windows-latest
-    needs: ["create-release"]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -169,17 +119,9 @@ jobs:
           cp target/release/usvg-win64.zip bin/
           cp tools/explorer-thumbnailer/install/resvg-explorer-extension.exe bin/
 
-      - name: Upload binaries
-        uses: alexellis/upload-assets@0.5.0
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["bin/*"]'
-
   release-windows-aarch64:
     name: Release Windows (aarch64)
     runs-on: windows-11-arm
-    needs: ["create-release"]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -210,17 +152,9 @@ jobs:
           cp target/release/resvg-win-aarch64.zip bin/
           cp target/release/usvg-win-aarch64.zip bin/
 
-      - name: Upload binaries
-        uses: alexellis/upload-assets@0.5.0
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["bin/*"]'
-
   release-macos-aarch64:
     name: Release macOS (aarch64)
     runs-on: macos-latest
-    needs: ["create-release"]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -252,17 +186,9 @@ jobs:
           cp target/release/resvg-macos-aarch64.zip bin/
           cp target/release/usvg-macos-aarch64.zip bin/
 
-      - name: Upload binaries
-        uses: alexellis/upload-assets@0.5.0
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["bin/*"]'
-
   release-macos-intel:
     name: Release macOS (intel)
     runs-on: macos-15-intel
-    needs: ["create-release"]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -293,10 +219,3 @@ jobs:
           mkdir bin
           cp target/release/resvg-macos-x86_64.zip bin/
           cp target/release/usvg-macos-x86_64.zip bin/
-
-      - name: Upload binaries
-        uses: alexellis/upload-assets@0.5.0
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["bin/*"]'
